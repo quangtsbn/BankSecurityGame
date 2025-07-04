@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bảng Điều Khiển An Ninh Ngân Hàng</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Màn hình bắt đầu -->
+        <div id="start-screen">
+            <h1>Bảng Điều Khiển An Ninh Ngân Hàng</h1>
+            <p style="text-align: center;">Hệ thống đang chờ lệnh. Hãy bắt đầu phiên làm việc để xử lý các giao dịch đến.</p>
+            <div class="button-group">
+                <button id="start-btn" class="btn">Bắt đầu Phiên làm việc</button>
+            </div>
+        </div>
+
+        <!-- Màn hình chơi game -->
+        <div id="game-screen" style="display:none;">
+            <div class="header-info">
+                <h2 id="level-display">Cấp Độ 1</h2>
+                <h2 id="score-display">Điểm: 0</h2>
+            </div>
+            <h3 id="transaction-title"></h3> 
+            <pre id="transaction-data" class="transaction-data"></pre>
+
+            <div class="action-panel">
+                <h3>Bảng điều khiển An ninh:</h3>
+                <div class="button-group">
+                    <button id="check-signature-btn" class="btn">1. Xác thực Chữ ký (RSA/SHA)</button>
+                    <button id="decrypt-btn" class="btn">2. Giải mã Dữ liệu (AES)</button>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>Nhật ký Hệ thống:</h3>
+                <div id="log-container"></div>
+                <div id="decrypted-info-panel" class="decrypted-info" style="display:none;">
+                    <h4>Thông tin đã giải mã:</h4>
+                    <div class="info-item">
+                        <span>Tài khoản nhận:</span>
+                        <span id="info-recipient"></span>
+                    </div>
+                    <div class="info-item">
+                        <span>Số tiền:</span>
+                        <span id="info-amount"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="decision-panel" style="display:none;">
+                <h3>Quyết định Cuối cùng:</h3>
+                <div class="button-group">
+                    <button id="approve-btn" class="btn">Phê duyệt</button>
+                    <button id="reject-btn" class="btn btn-danger">Từ chối</button>
+                </div>
+            </div>
+
+             <div id="next-round-panel" class="button-group" style="display:none;">
+                <button id="next-btn" class="btn">Giao dịch tiếp theo</button>
+            </div>
+        </div>
+
+        <!-- Màn hình kết quả -->
+        <div id="results-screen" style="display:none;">
+            <h1>Hoàn thành Phiên làm việc</h1>
+            <h2 id="final-score"></h2>
+            <p id="final-message" style="text-align: center;"></p>
+            <div class="button-group">
+                <button id="play-again-btn" class="btn">Bắt đầu Phiên mới</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="level-up-toast" class="level-up-toast"></div>
+
+<script>
+    const socket = io();
+    const screens = { start: document.getElementById('start-screen'), game: document.getElementById('game-screen'), results: document.getElementById('results-screen') };
+    const elements = {
+        startBtn: document.getElementById('start-btn'),
+        levelDisplay: document.getElementById('level-display'),
+        scoreDisplay: document.getElementById('score-display'),
+        transactionTitle: document.getElementById('transaction-title'),
+        transactionData: document.getElementById('transaction-data'),
+        checkSignatureBtn: document.getElementById('check-signature-btn'),
+        decryptBtn: document.getElementById('decrypt-btn'),
+        logContainer: document.getElementById('log-container'),
+        decryptedInfoPanel: document.getElementById('decrypted-info-panel'),
+        infoRecipient: document.getElementById('info-recipient'),
+        infoAmount: document.getElementById('info-amount'),
+        decisionPanel: document.getElementById('decision-panel'),
+        approveBtn: document.getElementById('approve-btn'),
+        rejectBtn: document.getElementById('reject-btn'),
+        nextRoundPanel: document.getElementById('next-round-panel'),
+        nextBtn: document.getElementById('next-btn'),
+        finalScore: document.getElementById('final-score'),
+        finalMessage: document.getElementById('final-message'),
+        playAgainBtn: document.getElementById('play-again-btn'),
+        levelUpToast: document.getElementById('level-up-toast')
+    };
+
+    let totalTransactions = 0;
+
+    const showScreen = (screenName) => Object.keys(screens).forEach(key => screens[key].style.display = (key === screenName ? 'block' : 'none'));
+    const updateScore = (score) => elements.scoreDisplay.textContent = `Điểm: ${score}`;
+
+    function resetRoundUI(current_index) {
+        elements.logContainer.innerHTML = '';
+        elements.decisionPanel.style.display = 'none';
+        elements.nextRoundPanel.style.display = 'none';
+        elements.decryptedInfoPanel.style.display = 'none';
+        elements.transactionTitle.textContent = `Giao dịch đến #${current_index + 1} / ${totalTransactions}`;
+        [elements.checkSignatureBtn, elements.decryptBtn, elements.approveBtn, elements.rejectBtn].forEach(btn => btn.disabled = false);
+    }
+
+    elements.startBtn.addEventListener('click', () => socket.emit('start_game'));
+    elements.checkSignatureBtn.addEventListener('click', () => socket.emit('player_action', { action: 'check_signature' }));
+    elements.decryptBtn.addEventListener('click', () => socket.emit('player_action', { action: 'decrypt' }));
+    elements.approveBtn.addEventListener('click', () => socket.emit('player_decision', { decision: 'approve' }));
+    elements.rejectBtn.addEventListener('click', () => socket.emit('player_decision', { decision: 'reject' }));
+    elements.nextBtn.addEventListener('click', () => socket.emit('request_next_transaction'));
+    elements.playAgainBtn.addEventListener('click', () => window.location.reload());
+
+    socket.on('game_started', (data) => {
+        totalTransactions = data.total_transactions;
+        showScreen('game');
+    });
+
+    socket.on('new_transaction_data', (data) => {
+        showScreen('game');
+        resetRoundUI(data.current_index);
+        updateScore(data.score);
+        elements.levelDisplay.textContent = `Cấp Độ ${data.current_level}`;
+        elements.transactionData.textContent = JSON.stringify(data.transaction, null, 4);
+    });
+
+    socket.on('action_result', (data) => {
+        const logItem = document.createElement('div');
+        logItem.className = `log-item ${data.type}`;
+        logItem.innerHTML = data.message;
+        elements.logContainer.appendChild(logItem);
+        if (data.action === 'check_signature') elements.checkSignatureBtn.disabled = true;
+        if (data.action === 'decrypt') elements.decryptBtn.disabled = true;
+        if (data.decrypted_info) {
+            elements.infoRecipient.textContent = data.decrypted_info.to_account || 'N/A';
+            const amount = data.decrypted_info.amount;
+            elements.infoAmount.textContent = typeof amount === 'number' ? `${amount.toLocaleString('vi-VN')} VND` : 'N/A';
+            elements.decryptedInfoPanel.style.display = 'block';
+        }
+        elements.decisionPanel.style.display = 'block';
+    });
+
+    socket.on('decision_judged', (data) => {
+        const logItem = document.createElement('div');
+        logItem.className = `log-item ${data.correct ? 'log-success' : 'log-fail'}`;
+        logItem.innerHTML = `<b>${data.message}</b>`;
+        elements.logContainer.appendChild(logItem);
+        updateScore(data.score);
+        elements.decisionPanel.style.display = 'none';
+        elements.nextRoundPanel.style.display = 'block';
+    });
+    
+    socket.on('level_up', (data) => {
+        elements.levelDisplay.textContent = `Cấp Độ ${data.new_level}`;
+        elements.levelUpToast.textContent = `Chúc mừng! Bạn đã đạt Cấp Độ ${data.new_level}!`;
+        elements.levelUpToast.className = "level-up-toast show";
+        setTimeout(() => { elements.levelUpToast.className = "level-up-toast"; }, 3000);
+    });
+    
+    socket.on('game_over', (data) => {
+        showScreen('results');
+        elements.finalScore.textContent = `Điểm cuối cùng: ${data.score} / ${totalTransactions}`;
+        elements.finalMessage.textContent = data.score === totalTransactions ? "Xuất sắc! Hệ thống ngân hàng tuyệt đối an toàn dưới sự quản lý của bạn." : "Một phiên làm việc tốt. Hãy tiếp tục nâng cao kỹ năng để bảo vệ hệ thống tốt hơn!";
+    });
+</script>
+</body>
+</html>
