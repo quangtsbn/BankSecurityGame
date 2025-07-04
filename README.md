@@ -1,8 +1,8 @@
-# Bảng Điều Khiển An Ninh Ngân Hàng
+# Mô phỏng Bảo mật Ngân hàng
 
 ## Giới thiệu
 
-Đây là một dự án mô phỏng hệ thống kiểm tra an ninh giao dịch ngân hàng, giúp người dùng rèn luyện kỹ năng phát hiện các giao dịch nguy hiểm thông qua các thao tác xác thực chữ ký số (RSA/SHA), giải mã dữ liệu (AES) và ra quyết định phê duyệt hoặc từ chối giao dịch. Giao diện hiện đại, thân thiện, trực quan, phù hợp cho đào tạo hoặc kiểm thử kiến thức an ninh thông tin.
+Đây là một dự án mô phỏng hệ thống kiểm tra bảo mật an ninh giao dịch ngân hàng, giúp người dùng rèn luyện kỹ năng phát hiện các giao dịch nguy hiểm thông qua các thao tác xác thực chữ ký số (RSA/SHA), giải mã dữ liệu (AES) và ra quyết định phê duyệt hoặc từ chối giao dịch. Giao diện hiện đại, thân thiện, trực quan, phù hợp cho đào tạo hoặc kiểm thử kiến thức an ninh thông tin.
 
 ## Tính năng nổi bật
 - **Kiểm tra chữ ký số RSA/SHA**: Xác thực tính toàn vẹn và nguồn gốc giao dịch.
